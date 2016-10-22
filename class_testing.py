@@ -1,6 +1,6 @@
 # class hai():
 # 	def pavan(self):
-# 		print ("you got it")
+# 		print ("you got it right")
 
 
 # if __name__=="__main__":
