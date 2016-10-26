@@ -16,7 +16,9 @@ import re
 import _thread
 from cryptography.fernet import InvalidToken
 from time import time
+import time as time2
 from datetime import timedelta
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -157,7 +159,8 @@ class AsrRegister:
         self.interact = None
 
     def asr_activation(self, hostname):
-        hostname, shortname = parse_target(hostname)
+        time2.sleep(hostname[1])
+        hostname, shortname = parse_target(hostname[0])
         self.hostname = hostname
         self.data['oob_name'] = hostname
         self.data['shortname'] = shortname
@@ -298,23 +301,22 @@ def main():
     wallet_asr = get_config(args.wallet_ASR, pswd_wallet_asr)
     step = AsrRegister(result, wallet_ilom['passwords'], wallet_asr['passwords'])
     z = list()
-    for ip_row_hostdata in args.target:
-        z.append(ip_row_hostdata.rstrip())
+    for num, ip_row_hostdata in enumerate(args.target, start=5):
+        z.append((ip_row_hostdata.rstrip(), num))
     args.number_of_hosts = len(z)
     try:
         with Log(args, wallet_asr) as log:
             pool = Pool(args.workers)
-            for k in range(0, len(z), 10):
-                result = pool.imap_unordered(step.asr_activation, z[k:k+10])
-                for data in result:
-                    log.record(data)
-                    print("{: 3.0f}%, {:d}+{:d} / {:d}: {}".format(
-                        100.0 * (log.succeeded + log.failed) / log.total,
-                        log.succeeded,
-                        log.failed,
-                        log.total,
-                        data['oob_name']))
+            result = pool.imap_unordered(step.asr_activation, z)
             pool.close()
+            for data in result:
+                log.record(data)
+                print("{: 3.0f}%, {:d}+{:d} / {:d}: {}".format(
+                    100.0 * (log.succeeded + log.failed) / log.total,
+                    log.succeeded,
+                    log.failed,
+                    log.total,
+                    data['oob_name']))
     except (InvalidToken, ValueError, IndexError, TimeoutError, EOFError, socket.timeout,
             paramiko.ssh_exception.SSHException) as e:
         print(str(e))
